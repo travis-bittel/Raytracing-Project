@@ -15,6 +15,38 @@ class Cylinder extends SceneObject {
     this.height = height;
     this.material = material;
   }
+
+  getQuadraticIntersectionTerms(ray) {
+    let a = Math.pow(ray.direction.x, 2) + Math.pow(ray.direction.z, 2); 
+    let b = -2 * ray.direction.x * this.x - (2 * ray.direction.z * this.z);
+    let c = Math.pow(this.x, 2) + Math.pow(this.z, 2) - Math.pow(this.radius, 2);
+    return [a, b, c];
+  }
+
+  // Courtesy of: https://stackoverflow.com/questions/36266357/how-can-i-compute-normal-on-the-surface-of-a-cylinder
+  getSurfaceNormal(hit) {
+    return createVector(hit.x - hit.sceneObject.x, 0, hit.z - hit.sceneObject.z).normalize();
+  }
+}
+
+class Sphere extends SceneObject {
+  constructor(x, y, z, radius, material) {
+    super(x, y, z);
+    this.radius = radius;
+    this.material = material;
+  }
+
+  getQuadraticIntersectionTerms(ray) {
+    let a = 1; // Ray is unit vector, squared magnitude will always be 1
+    let b = -2 * (ray.direction.x * this.x + ray.direction.y * this.y + ray.direction.z * this.z);
+    let c = Math.pow(this.x, 2) + Math.pow(this.y, 2) + Math.pow(this.z, 2) - Math.pow(this.radius, 2);
+    return [a, b, c];
+  }
+
+  // Courtesy of: my brain, logically thinking about this given the cylinder's surface normal
+  getSurfaceNormal(hit) {
+    return createVector(hit.x - hit.sceneObject.x, hit.y - hit.sceneObject.y, hit.z - hit.sceneObject.z).normalize();
+  }
 }
 
 class Light extends SceneObject {
@@ -108,6 +140,10 @@ function new_cylinder (x, y, z, radius, h) {
   sceneObjects.push(new Cylinder(x, y, z, radius, h, Material.copyOf(latestMaterial)));
 }
 
+function new_sphere(x, y, z, radius) {
+  sceneObjects.push(new Sphere(x, y, z, radius, Material.copyOf(latestMaterial)));
+}
+
 function draw_scene() {
   noStroke();
   // go through all the pixels in the image
@@ -117,8 +153,8 @@ function draw_scene() {
       // add your ray creation and scene intersection code here
       let k = Math.tan((fov * Math.PI / 180) / 2); 
 
-      let yPrime = (y - (height / 2)) * (2 * k / (height * 2)); // Why height * 2??
-      yPrime *= -1; // Flip it?
+      let yPrime = (y - (height / 2)) * (2 * k / (height));
+      yPrime *= -1;
       let xPrime = (x - (width / 2)) * (2 * k / width);
       let z = -1;
 
@@ -140,67 +176,34 @@ function draw_scene() {
 
       // draw a little rectangle to fill the pixel
       rect (x, y, 1, 1);
-      
     }
   }
-
-  test(new Hit(new Cylinder(0, 0, 0, 1, 2, latestMaterial), 1, 1, 1));
-}
-
-function test(hit) {
-  let color = new Color();
-  for (let i = 0; i < lights.length; i++) {
-    let direction = createVector(lights[i].x - hit.x, lights[i].y - hit.y, lights[i].z - hit.z);
-    // Courtesy of: https://stackoverflow.com/questions/36266357/how-can-i-compute-normal-on-the-surface-of-a-cylinder
-    let surfaceNormal = createVector(hit.x - hit.sceneObject.x, 0, hit.z - hit.sceneObject.z);
-
-    let dotProduct = surfaceNormal.dot(direction) / surfaceNormal.mag() / direction.mag();
-    if (dotProduct < 0) {
-      dotProduct = 0;
-    }
-    color.r = hit.sceneObject.material.dr * lights[i].r * dotProduct;
-    color.g = hit.sceneObject.material.dg * dotProduct;
-    color.b = hit.sceneObject.material.db * dotProduct;
-
-    console.log(`For Hit Point (${hit.x}, ${hit.y}, ${hit.z}): \nSurface Normal: ${surfaceNormal} \n Direction: ${direction} \nDot Product: ${dotProduct} \nRed: ${color.r}`);
-  }
-
-  return color;
 }
 
 function calculateRayHit(ray) {
-  // Check ray against every cylinder
+  // Check ray against every scene object
   let maxZ = -Infinity;
   let hit = null;
   for (let i = 0; i < sceneObjects.length; i++) {
-    // Plug our ray equation into the implicit cylinder equation and turn it into a quadratic: ax^2 + bx + c = 0
-    let a = Math.pow(ray.direction.x, 2) + Math.pow(ray.direction.z, 2);
-    let b = -2 * ray.direction.x * sceneObjects[i].x - (2 * ray.direction.z * sceneObjects[i].z);
-    let c = Math.pow(sceneObjects[i].x, 2) + Math.pow(sceneObjects[i].z, 2) - Math.pow(sceneObjects[i].radius, 2);
+    let [a, b, c] = sceneObjects[i].getQuadraticIntersectionTerms(ray)
 
     // Quadratic Formula
-    let t1 = -b + Math.sqrt(Math.pow(b, 2) - (4 * a * c));
-    let t2 = -b - Math.sqrt(Math.pow(b, 2) - (4 * a * c));
+    let t1 = ((-b) + Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
+    let t2 = ((-b) - Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
 
     // Check both t-values and use them if the z is greater than our current
     let tempHit = calculateIntersection(t1, ray, sceneObjects[i]);
-    if (tempHit != undefined && tempHit.z > maxZ) {
+    if (tempHit != undefined && tempHit != null && tempHit.z > maxZ) {
       hit = tempHit;
       maxZ = tempHit.z;
     }
 
-    // 0, -4, -3
-
     tempHit = calculateIntersection(t2, ray, sceneObjects[i]);
-    if (tempHit != undefined && tempHit.z > maxZ) {
+    if (tempHit != undefined && tempHit != null && tempHit.z > maxZ) {
       hit = tempHit;
       maxZ = tempHit.z;
     }
   }
-
-  // if (hit != null) {
-  //   console.log(`${hit.x}, ${hit.y}, ${hit.z}`);
-  // }
 
   return hit;
 }
@@ -210,27 +213,35 @@ function calculateIntersection(t, ray, sceneObject) {
   let y = ray.direction.y * t;
   let z = ray.direction.z * t;
 
-  if (t > 0 && y < sceneObject.y + sceneObject.height && y > sceneObject.y) {
-    return new Hit(sceneObject, x, y, z);
+  // If the sceneObject doesn't define a height, we ignore it. Otherwise check it
+  if (sceneObject.height == undefined) {
+    if (t > 0) {
+      return new Hit(sceneObject, x, y, z);
+    }
+  } else {
+    if (t > 0 && y < sceneObject.y + sceneObject.height && y > sceneObject.y) {
+      return new Hit(sceneObject, x, y, z);
+    }
   }
+
+  return null;
 }
 
 function getShadedColor(hit) {
-  let color = new Color();
+  let color = new Color(0, 0, 0);
   for (let i = 0; i < lights.length; i++) {
     let direction = createVector(lights[i].x - hit.x, lights[i].y - hit.y, lights[i].z - hit.z).normalize();
-    // Courtesy of: https://stackoverflow.com/questions/36266357/how-can-i-compute-normal-on-the-surface-of-a-cylinder
-    let surfaceNormal = createVector(hit.x - hit.sceneObject.x, 0, hit.z - hit.sceneObject.z).normalize();
-    
+    //let surfaceNormal = createVector(hit.x - hit.sceneObject.x, 0, hit.z - hit.sceneObject.z).normalize();
+    let surfaceNormal = hit.sceneObject.getSurfaceNormal(hit);
+
     let dotProduct = surfaceNormal.dot(direction);
     if (dotProduct < 0) {
       dotProduct = 0;
     }
 
-    color.r = hit.sceneObject.material.dr * lights[i].r * dotProduct;
-    color.g = hit.sceneObject.material.dg * lights[i].g * dotProduct;
-    color.b = hit.sceneObject.material.db * lights[i].b * dotProduct;
+    color.r += hit.sceneObject.material.dr * lights[i].r * dotProduct;
+    color.g += hit.sceneObject.material.dg * lights[i].g * dotProduct;
+    color.b += hit.sceneObject.material.db * lights[i].b * dotProduct;
   }
-  
   return color;
 }

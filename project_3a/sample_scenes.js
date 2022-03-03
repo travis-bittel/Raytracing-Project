@@ -16,26 +16,8 @@ function keyPressed() {
     case '2':  one_short_cylinder(); break;
     case '3':  cylinder_face(); break;
     case '4':  five_cylinders(); break;
-    case '5':  test_scene(); break;
+    case '5':  spheres(); break;
   }
-}
-
-function test_scene() {
-  
-  console.log ("start of test\n");
-  
-  set_background (0.5, 0.5, 0.9);
-  
-  set_fov (60.0);
-  new_light (1, 1, 1, 7, 6, 10);
-  
-  // one cylinder
-  new_material (0.9, 0.0, 0.0,  0, 0, 0,  0, 0, 0,  1,  0);
-  new_cylinder (0, 0, -4,  1,  2);
-  
-  draw_scene();
-
-  console.log ("end of test\n");
 }
 
 // one long cylinder, so you don't see the ends
@@ -55,6 +37,26 @@ function one_long_cylinder() {
   draw_scene();
 
   console.log ("end of one_long_cylinder\n");
+}
+
+function spheres() {
+  
+  console.log ("start of spheres\n");
+  
+  set_background (0.5, 0.5, 0.9);
+  
+  set_fov (60.0);
+  new_light (1, 1, 1, 7, 6, 10);
+  
+  // one cylinder
+  new_material (0.9, 0.0, 0.0,  0, 0, 0,  0, 0, 0,  1,  0);
+
+  new_sphere(-1, -1, -4, 1);
+  new_sphere(1.5, -1, -4, 1.25);
+  
+  draw_scene();
+
+  console.log ("end of spheres\n");
 }
 
 // one cylinder
