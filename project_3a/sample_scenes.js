@@ -48,7 +48,6 @@ function spheres() {
   set_fov (60.0);
   new_light (1, 1, 1, 7, 6, 10);
   
-  // one cylinder
   new_material (0.9, 0.0, 0.0,  0, 0, 0,  0, 0, 0,  1,  0);
 
   new_sphere(-1, -1, -4, 1);
