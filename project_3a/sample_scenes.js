@@ -50,8 +50,8 @@ function spheres() {
   
   new_material (0.9, 0.0, 0.0,  0, 0, 0,  0, 0, 0,  1,  0);
 
-  new_sphere(-1, -1, -4, 1);
-  new_sphere(1.5, -1, -4, 1.25);
+  new_sphere(0, -1, -4, 1);
+  new_sphere(-3, -1, -8, 1);
   
   draw_scene();
 

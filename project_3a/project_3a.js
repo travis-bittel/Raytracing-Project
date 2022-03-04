@@ -16,6 +16,16 @@ class Cylinder extends SceneObject {
     this.material = material;
   }
 
+  getTValues(ray) {
+    let [a, b, c] = this.getQuadraticIntersectionTerms(ray);
+
+    // Quadratic Formula
+    let t1 = ((-b) + Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
+    let t2 = ((-b) - Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
+
+    return [t1, t2];
+  }
+  
   getQuadraticIntersectionTerms(ray) {
     let a = Math.pow(ray.direction.x, 2) + Math.pow(ray.direction.z, 2); 
     let b = -2 * ray.direction.x * this.x - (2 * ray.direction.z * this.z);
@@ -34,6 +44,16 @@ class Sphere extends SceneObject {
     super(x, y, z);
     this.radius = radius;
     this.material = material;
+  }
+
+  getTValues(ray) {
+    let [a, b, c] = this.getQuadraticIntersectionTerms(ray);
+
+    // Quadratic Formula
+    let t1 = ((-b) + Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
+    let t2 = ((-b) - Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
+
+    return [t1, t2];
   }
 
   getQuadraticIntersectionTerms(ray) {
@@ -185,11 +205,8 @@ function calculateRayHit(ray) {
   let maxZ = -Infinity;
   let hit = null;
   for (let i = 0; i < sceneObjects.length; i++) {
-    let [a, b, c] = sceneObjects[i].getQuadraticIntersectionTerms(ray)
 
-    // Quadratic Formula
-    let t1 = ((-b) + Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
-    let t2 = ((-b) - Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
+    let [t1, t2] = sceneObjects[i].getTValues(ray);
 
     // Check both t-values and use them if the z is greater than our current
     let tempHit = calculateIntersection(t1, ray, sceneObjects[i]);
