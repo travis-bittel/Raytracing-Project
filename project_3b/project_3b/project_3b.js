@@ -125,17 +125,6 @@ class Cylinder extends SceneObject {
     let c = Math.pow(this.x, 2) + Math.pow(this.z, 2) - Math.pow(this.radius, 2);
     return [a, b, c];
   }
-
-  // Courtesy of: https://stackoverflow.com/questions/36266357/how-can-i-compute-normal-on-the-surface-of-a-cylinder
-  getSurfaceNormal(hit) {
-    if (hit.y == this.y + this.height) {
-      return createVector(0, 1, 0);
-    }
-    if (hit.y == this.y) {
-      return createVector(0, -1, 0);
-    }
-    return createVector(hit.x - hit.sceneObject.x, 0, hit.z - hit.sceneObject.z).normalize();
-  }
 }
 
 class Sphere extends SceneObject {
@@ -145,8 +134,44 @@ class Sphere extends SceneObject {
     this.material = material;
   }
 
-  getHits(ray) {
+  getNearestHit(ray) {
+    let hits = this.getHits(ray);
 
+    let bestHit = null;
+    let maxZ = -Infinity;
+
+    hits.forEach(
+      hit => {
+        if (hit != undefined && hit != null && hit.z > maxZ) {
+          bestHit = hit;
+          maxZ = hit.z;
+        }
+      }
+    );
+
+    return bestHit;
+
+  }
+
+  getHits(ray) {
+    let hits = [];
+
+    let [a, b, c] = this.getQuadraticIntersectionTerms(ray);
+
+    // Quadratic Formula
+    let t1 = ((-b) + Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
+    let t2 = ((-b) - Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
+
+    if (!isNaN(t1) && t1 >= 0) {
+      hits.push(new Hit(this, ray.direction.x * t1, ray.direction.y * t1, ray.direction.z * t1, 
+          createVector(ray.direction.x * t1 - this.x, ray.direction.y * t1 - this.y, ray.direction.z * t1 - this.z).normalize()));
+    }
+    if (!isNaN(t2) && t2 >= 0) {
+      hits.push(new Hit(this, ray.direction.x * t2, ray.direction.y * t2, ray.direction.z * t2, 
+        createVector(ray.direction.x * t2 - this.x, ray.direction.y * t1 - this.y, ray.direction.z * t2 - this.z).normalize()));
+    }
+
+    return hits;
   }
 
   getTValues(ray) {
@@ -164,11 +189,6 @@ class Sphere extends SceneObject {
     let b = -2 * (ray.direction.x * this.x + ray.direction.y * this.y + ray.direction.z * this.z);
     let c = Math.pow(this.x, 2) + Math.pow(this.y, 2) + Math.pow(this.z, 2) - Math.pow(this.radius, 2);
     return [a, b, c];
-  }
-
-  // Courtesy of: my brain, logically thinking about this given the cylinder's surface normal
-  getSurfaceNormal(hit) {
-    return createVector(hit.x - hit.sceneObject.x, hit.y - hit.sceneObject.y, hit.z - hit.sceneObject.z).normalize();
   }
 }
 
@@ -235,7 +255,6 @@ let latestMaterial = null;
 let backgroundColor = null;
 let fov = 0;
 
-//these are the routines that you should write for the project
 function reset_scene() {
   sceneObjects = [];
   lights = [];
@@ -274,20 +293,12 @@ function draw_scene() {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
 
-      // add your ray creation and scene intersection code here
-      let k = Math.tan((fov * Math.PI / 180) / 2); 
-
-      let yPrime = (y - (height / 2)) * (2 * k / (height));
-      yPrime *= -1;
-      let xPrime = (x - (width / 2)) * (2 * k / width);
-      let z = -1;
-
-      let ray = new Ray(0, 0, 0, createVector(xPrime, yPrime, z).normalize());
+      let ray = createEyeRay(x, y);
 
       // Check ray against every cylinder
       let hit = calculateRayHit(ray);
 
-      // set the pixel color to the shaded color of the ray
+      // Set the pixel color to the shaded color of the ray
       if (hit == null) {
         color.r = backgroundColor.r;
         color.g = backgroundColor.g;
@@ -298,10 +309,21 @@ function draw_scene() {
 
       fill (color.r * 255, color.g * 255, color.b * 255);
 
-      // draw a little rectangle to fill the pixel
+      // Fill pixel with shaded color
       rect (x, y, 1, 1);
     }
   }
+}
+
+function createEyeRay(x, y) {
+  let k = Math.tan((fov * Math.PI / 180) / 2); 
+
+  let yPrime = (y - (height / 2)) * (2 * k / (height));
+  yPrime *= -1;
+  let xPrime = (x - (width / 2)) * (2 * k / width);
+  let z = -1;
+
+  return new Ray(0, 0, 0, createVector(xPrime, yPrime, z).normalize());
 }
 
 function calculateRayHit(ray) {
@@ -309,45 +331,14 @@ function calculateRayHit(ray) {
   let maxZ = -Infinity;
   let hit = null;
 
-  let minT = Infinity;
-  let sceneObject = null;
-
   for (let i = 0; i < sceneObjects.length; i++) {
-    // let tValue = sceneObjects[i].getSmallestTValue(ray);
-    // if (tValue > 0 && tValue < minT) {
-    //   minT = tValue;
-    //   sceneObject = sceneObjects[i];
-    // }
     let tempHit = sceneObjects[i].getNearestHit(ray);
     if (tempHit != null && tempHit.z > maxZ) {
       hit = tempHit;
       maxZ = tempHit.z;
     }
   }
-  if (sceneObject != null) {
-    hit = calculateIntersection(minT, ray, sceneObject);
-  }
   return hit;
-}
-
-function calculateIntersection(t, ray, sceneObject) {
-  let x = ray.direction.x * t;
-  let y = ray.direction.y * t;
-  let z = ray.direction.z * t;
-
-  // If the sceneObject doesn't define a height, we ignore it. Otherwise check it
-  if (sceneObject.height == undefined) {
-    if (t > 0) {
-      return new Hit(sceneObject, x, y, z);
-    }
-  } else {
-    if (t > 0 && y <= sceneObject.y + sceneObject.height + 0.0001 && y >= sceneObject.y - 0.0001) {
-        return new Hit(sceneObject, x, y, z);
-    }
-    console.log(`${y}, ${sceneObject.height + sceneObject.y}`);
-  }
-
-  return null;
 }
 
 function getShadedColor(hit) {
