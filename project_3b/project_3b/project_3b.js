@@ -27,11 +27,33 @@ class Cylinder extends SceneObject {
   getTValues(ray) {
     let [a, b, c] = this.getQuadraticIntersectionTerms(ray);
 
+    let tValues = [];
+
     // Quadratic Formula
     let t1 = ((-b) + Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
     let t2 = ((-b) - Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
+    if (!isNaN(t1)) {
+      tValues.push(t1);
+    }
+    if (!isNaN(t2)) {
+      tValues.push(t2);
+    }
 
-    return [t1, t2];
+    // Cap intersections
+    let t3 = this.y / ray.direction.y; // Bottom
+    // Check if inside of cap
+    if (!isNaN(t3) && Math.pow(t3 * ray.direction.x - this.x, 2) + Math.pow(t3 * ray.direction.z - this.z, 2) <= Math.pow(this.radius, 2)) {
+      tValues.push(t3);
+    }
+
+    let t4 = (this.y + this.height) / ray.direction.y; // Top
+    // Check if inside of cap
+    if (!isNaN(t4) && Math.pow(t4 * ray.direction.x - this.x, 2) + Math.pow(t4 * ray.direction.z - this.z, 2) <= Math.pow(this.radius, 2)) {
+      tValues.push(t4);
+    }
+
+    return tValues;
+    //return [t1, t2];
   }
   
   getQuadraticIntersectionTerms(ray) {
@@ -43,6 +65,12 @@ class Cylinder extends SceneObject {
 
   // Courtesy of: https://stackoverflow.com/questions/36266357/how-can-i-compute-normal-on-the-surface-of-a-cylinder
   getSurfaceNormal(hit) {
+    if (hit.y == this.y + this.height) {
+      return createVector(0, 1, 0);
+    }
+    if (hit.y == this.y) {
+      return createVector(0, -1, 0);
+    }
     return createVector(hit.x - hit.sceneObject.x, 0, hit.z - hit.sceneObject.z).normalize();
   }
 }
@@ -241,7 +269,7 @@ function calculateIntersection(t, ray, sceneObject) {
       return new Hit(sceneObject, x, y, z);
     }
   } else {
-    if (t > 0 && y < sceneObject.y + sceneObject.height && y > sceneObject.y) {
+    if (t > 0 && y <= sceneObject.y + sceneObject.height && y >= sceneObject.y) {
       return new Hit(sceneObject, x, y, z);
     }
   }
