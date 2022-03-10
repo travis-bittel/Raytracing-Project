@@ -1,6 +1,3 @@
-function ambient_light (r, g, b) {
-}
-
 class SceneObject {
   constructor(x, y, z) {
     this.x = x;
@@ -201,6 +198,14 @@ class Light extends SceneObject {
   }
 }
 
+class AmbientLight {
+  constructor(r, g, b) {
+    this.r = r;
+    this.g = g;
+    this.b = b;
+  }
+}
+
 class Material {
   constructor(dr, dg, db, ar, ag, ab, sr, sg, sb, pow, k_refl) {
     this.dr = dr;
@@ -251,6 +256,7 @@ class Hit {
 
 let sceneObjects = [];
 let lights = []; // Store all lights here even though they inherit from SceneObject! Yes this is confusing! :)
+let ambientLights = [];
 let latestMaterial = null;
 let backgroundColor = null;
 let fov = 0;
@@ -258,6 +264,7 @@ let fov = 0;
 function reset_scene() {
   sceneObjects = [];
   lights = [];
+  ambientLights = [];
   latestMaterial = null;
   backgroundColor = null;
   fov = 0;
@@ -273,6 +280,10 @@ function set_fov (angle) {
 
 function new_light (r, g, b, x, y, z) {
   lights.push(new Light(r, g, b, x, y, z));
+}
+
+function ambient_light (r, g, b) {
+  ambientLights.push(new AmbientLight(r, g, b));
 }
 
 function new_material (dr, dg, db, ar, ag, ab, sr, sg, sb, pow, k_refl) {
@@ -356,5 +367,11 @@ function getShadedColor(hit) {
     color.g += hit.sceneObject.material.dg * lights[i].g * dotProduct;
     color.b += hit.sceneObject.material.db * lights[i].b * dotProduct;
   }
+  for (let i = 0; i < ambientLights.length; i++) {
+    color.r += hit.sceneObject.material.ar * ambientLights[i].r;
+    color.g += hit.sceneObject.material.ag * ambientLights[i].g;
+    color.b += hit.sceneObject.material.ab * ambientLights[i].b;
+  }
+
   return color;
 }
