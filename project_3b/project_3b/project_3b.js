@@ -1,12 +1,5 @@
-// Here are the two new routines that you should add to your ray tracer for Part B
-
-function new_sphere (x, y, z, radius) {
-}
-
 function ambient_light (r, g, b) {
 }
-
-// You should swap in your routines from Part A for the placeholder routines below
 
 class SceneObject {
   constructor(x, y, z) {
@@ -24,36 +17,106 @@ class Cylinder extends SceneObject {
     this.material = material;
   }
 
+  getHits(ray) {
+    let hits = [];
+
+    // Quadratic Formula
+    let [a, b, c] = this.getQuadraticIntersectionTerms(ray);
+
+    let t1 = ((-b) + Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
+    let t2 = ((-b) - Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
+    if (!isNaN(t1) && t1 >= 0 && ray.direction.y * t1 > this.y && ray.direction.y * t1 < this.y + this.height) {
+      hits.push(new Hit(this, ray.direction.x * t1, ray.direction.y * t1, ray.direction.z * t1, 
+          createVector(ray.direction.x * t1 - this.x, 0, ray.direction.z * t1 - this.z).normalize()));
+    }
+    if (!isNaN(t2) && t2 >= 0 && ray.direction.y * t2 > this.y && ray.direction.y * t2 < this.y + this.height) {
+      hits.push(new Hit(this, ray.direction.x * t2, ray.direction.y * t2, ray.direction.z * t2, 
+        createVector(ray.direction.x * t2 - this.x, 0, ray.direction.z * t2 - this.z).normalize()));
+    }
+
+    // Cap intersections
+    let t3 = this.y / ray.direction.y; // Bottom
+    // Check if inside of cap
+    if (!isNaN(t3) && t3 >= 0 && Math.pow(t3 * ray.direction.x - this.x, 2) + Math.pow(t3 * ray.direction.z - this.z, 2) <= Math.pow(this.radius, 2)) {
+      hits.push(new Hit(this, ray.direction.x * t3, ray.direction.y * t3, ray.direction.z * t3, createVector(0, -1, 0)));
+    }
+
+    let t4 = (this.y + this.height) / ray.direction.y; // Top
+    // Check if inside of cap
+    if (!isNaN(t4) && t4 >= 0 && Math.pow(t4 * ray.direction.x - this.x, 2) + Math.pow(t4 * ray.direction.z - this.z, 2) <= Math.pow(this.radius, 2)) {
+      hits.push(new Hit(this, ray.direction.x * t4, ray.direction.y * t4, ray.direction.z * t4, createVector(0, 1, 0)));
+    }
+
+    return hits;
+  }
+
+  getNearestHit(ray) {
+    let hits = this.getHits(ray);
+
+    let bestHit = null;
+    let maxZ = -Infinity;
+
+    hits.forEach(
+      hit => {
+        if (hit != undefined && hit != null && hit.z > maxZ) {
+          bestHit = hit;
+          maxZ = hit.z;
+        }
+      }
+    );
+
+    return bestHit;
+
+  }
+
   getTValues(ray) {
     let [a, b, c] = this.getQuadraticIntersectionTerms(ray);
 
     let tValues = [];
 
     // Quadratic Formula
-    let t1 = ((-b) + Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
-    let t2 = ((-b) - Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
-    if (!isNaN(t1)) {
-      tValues.push(t1);
-    }
-    if (!isNaN(t2)) {
-      tValues.push(t2);
-    }
+    // let t1 = ((-b) + Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
+    // let t2 = ((-b) - Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
+    // if (!isNaN(t1) && t1 >= 0) {
+    //   tValues.push(t1);
+    // }
+    // if (!isNaN(t2) && t2 >= 0) {
+    //   tValues.push(t2);
+    // }
 
     // Cap intersections
     let t3 = this.y / ray.direction.y; // Bottom
     // Check if inside of cap
-    if (!isNaN(t3) && Math.pow(t3 * ray.direction.x - this.x, 2) + Math.pow(t3 * ray.direction.z - this.z, 2) <= Math.pow(this.radius, 2)) {
+    if (!isNaN(t3) && t3 >= 0 && Math.pow(t3 * ray.direction.x - this.x, 2) + Math.pow(t3 * ray.direction.z - this.z, 2) <= Math.pow(this.radius, 2)) {
       tValues.push(t3);
     }
 
     let t4 = (this.y + this.height) / ray.direction.y; // Top
     // Check if inside of cap
-    if (!isNaN(t4) && Math.pow(t4 * ray.direction.x - this.x, 2) + Math.pow(t4 * ray.direction.z - this.z, 2) <= Math.pow(this.radius, 2)) {
+    if (!isNaN(t4) && t4 >= 0 && Math.pow(t4 * ray.direction.x - this.x, 2) + Math.pow(t4 * ray.direction.z - this.z, 2) <= Math.pow(this.radius, 2)) {
       tValues.push(t4);
     }
 
     return tValues;
-    //return [t1, t2];
+  }
+
+  getSmallestTValue(ray) {
+    let tValues = this.getTValues(ray);
+
+    let bestT = null;
+    let maxZ = -Infinity;
+
+    tValues.forEach(
+      t => {
+        let tempHit = calculateIntersection(t, ray, this);
+        if (tempHit != undefined && tempHit != null && tempHit.z > maxZ) {
+          bestT = t;
+          maxZ = tempHit.z;
+        }
+      }
+    );
+
+    return bestT;
   }
   
   getQuadraticIntersectionTerms(ray) {
@@ -80,6 +143,10 @@ class Sphere extends SceneObject {
     super(x, y, z);
     this.radius = radius;
     this.material = material;
+  }
+
+  getHits(ray) {
+
   }
 
   getTValues(ray) {
@@ -153,11 +220,12 @@ class Ray {
 }
 
 class Hit {
-  constructor(sceneObject, x, y, z) {
+  constructor(sceneObject, x, y, z, surfaceNormal) {
     this.sceneObject = sceneObject;
     this.x = x;
     this.y = y;
     this.z = z;
+    this.surfaceNormal = surfaceNormal;
   }
 }
 
@@ -240,20 +308,24 @@ function calculateRayHit(ray) {
   // Check ray against every scene object
   let maxZ = -Infinity;
   let hit = null;
+
+  let minT = Infinity;
+  let sceneObject = null;
+
   for (let i = 0; i < sceneObjects.length; i++) {
-
-    //let [t1, t2] = sceneObjects[i].getTValues(ray);
-    let tValues = sceneObjects[i].getTValues(ray);
-
-    tValues.forEach(
-      t => {
-        let tempHit = calculateIntersection(t, ray, sceneObjects[i]);
-        if (tempHit != undefined && tempHit != null && tempHit.z > maxZ) {
-          hit = tempHit;
-          maxZ = tempHit.z;
-        }
-      }
-    );
+    // let tValue = sceneObjects[i].getSmallestTValue(ray);
+    // if (tValue > 0 && tValue < minT) {
+    //   minT = tValue;
+    //   sceneObject = sceneObjects[i];
+    // }
+    let tempHit = sceneObjects[i].getNearestHit(ray);
+    if (tempHit != null && tempHit.z > maxZ) {
+      hit = tempHit;
+      maxZ = tempHit.z;
+    }
+  }
+  if (sceneObject != null) {
+    hit = calculateIntersection(minT, ray, sceneObject);
   }
   return hit;
 }
@@ -269,9 +341,10 @@ function calculateIntersection(t, ray, sceneObject) {
       return new Hit(sceneObject, x, y, z);
     }
   } else {
-    if (t > 0 && y <= sceneObject.y + sceneObject.height && y >= sceneObject.y) {
-      return new Hit(sceneObject, x, y, z);
+    if (t > 0 && y <= sceneObject.y + sceneObject.height + 0.0001 && y >= sceneObject.y - 0.0001) {
+        return new Hit(sceneObject, x, y, z);
     }
+    console.log(`${y}, ${sceneObject.height + sceneObject.y}`);
   }
 
   return null;
@@ -281,8 +354,7 @@ function getShadedColor(hit) {
   let color = new Color(0, 0, 0);
   for (let i = 0; i < lights.length; i++) {
     let direction = createVector(lights[i].x - hit.x, lights[i].y - hit.y, lights[i].z - hit.z).normalize();
-    //let surfaceNormal = createVector(hit.x - hit.sceneObject.x, 0, hit.z - hit.sceneObject.z).normalize();
-    let surfaceNormal = hit.sceneObject.getSurfaceNormal(hit);
+    let surfaceNormal = hit.surfaceNormal;
 
     let dotProduct = surfaceNormal.dot(direction);
     if (dotProduct < 0) {
