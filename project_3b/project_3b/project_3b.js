@@ -316,15 +316,18 @@ function getShadedColor(hit) {
   let color = new Color(0, 0, 0);
 
   // Each of our shading functions add to the (r, g, b) values of the passed in color
-  diffuseShading(hit, color);
-  ambientShading(hit, color);
+  diffuseAndAmbientShading(hit, color);
   specularShading(hit, color);
 
   return color;
 }
 
 //#region Shading Functions
-function diffuseShading(hit, color) {
+function diffuseAndAmbientShading(hit, color) {
+  let diffuseR = 0;
+  let diffuseG = 0;
+  let diffuseB = 0;
+
   for (let i = 0; i < lights.length; i++) {
     let direction = createVector(lights[i].x - hit.x, lights[i].y - hit.y, lights[i].z - hit.z).normalize();
     let surfaceNormal = hit.surfaceNormal;
@@ -334,15 +337,15 @@ function diffuseShading(hit, color) {
       dotProduct = 0;
     }
 
-    color.r += hit.sceneObject.material.dr * lights[i].r * dotProduct;
-    color.g += hit.sceneObject.material.dg * lights[i].g * dotProduct;
-    color.b += hit.sceneObject.material.db * lights[i].b * dotProduct;
+    diffuseR += lights[i].r * dotProduct;
+    diffuseG += lights[i].g * dotProduct;
+    diffuseB += lights[i].b * dotProduct;
   }
-}
-function ambientShading(hit, color) {
-  color.r += hit.sceneObject.material.ar * ambientLight.r;
-  color.g += hit.sceneObject.material.ag * ambientLight.g;
-  color.b += hit.sceneObject.material.ab * ambientLight.b;
+  
+  // Diffuse Color * (Ambient Amount + Diffuse Amount)
+  color.r += hit.sceneObject.material.dr * (hit.sceneObject.material.ar * ambientLight.r + diffuseR);
+  color.g += hit.sceneObject.material.dg * (hit.sceneObject.material.ag * ambientLight.g + diffuseG);
+  color.b += hit.sceneObject.material.db * (hit.sceneObject.material.ab * ambientLight.b + diffuseB);
 }
 function specularShading(hit, color) {
   for (let i = 0; i < lights.length; i++) {
@@ -352,7 +355,7 @@ function specularShading(hit, color) {
     let H = p5.Vector.add(L, V);
     H.div(2.0);
 
-    let NdotH = p5.Vector.dot(hit.surfaceNormal, H)
+    let NdotH = p5.Vector.dot(hit.surfaceNormal, H);
     if (NdotH < 0) {
       NdotH = 0;
     }
