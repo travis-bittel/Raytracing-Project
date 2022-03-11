@@ -1,3 +1,4 @@
+//#region Classes
 class SceneObject {
   constructor(x, y, z) {
     this.x = x;
@@ -212,6 +213,7 @@ class Hit {
     this.surfaceNormal = surfaceNormal;
   }
 }
+//#endregion
 
 let sceneObjects = [];
 let lights = []; // Store all lights here even though they inherit from SceneObject! Yes this is confusing! :)
@@ -220,6 +222,7 @@ let latestMaterial = null;
 let backgroundColor = null;
 let fov = 0;
 
+//#region Scene Setup Functions
 function reset_scene() {
   sceneObjects = [];
   lights = [];
@@ -256,24 +259,24 @@ function new_cylinder (x, y, z, radius, h) {
 function new_sphere(x, y, z, radius) {
   sceneObjects.push(new Sphere(x, y, z, radius, Material.copyOf(latestMaterial)));
 }
+//#endregion
 
 function draw_scene() {
   noStroke();
-  // go through all the pixels in the image
+  // For every pixel on the screen
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
 
       let ray = createEyeRay(x, y);
 
-      // Check ray against every cylinder
+      // Check ray against every sceneObject
       let hit = calculateRayHit(ray);
 
       let color = new Color(backgroundColor.r, backgroundColor.g, backgroundColor.b);
-
-      // Set the pixel color to the shaded color of the ray
       if (hit != null) {
         color = getShadedColor(hit);
       }
+
       fill (color.r * 255, color.g * 255, color.b * 255);
 
       // Fill pixel with shaded color
@@ -290,11 +293,12 @@ function createEyeRay(x, y) {
   let xPrime = (x - (width / 2)) * (2 * k / width);
   let z = -1;
 
+  // Assume ray always starts at origin
   return new Ray(0, 0, 0, createVector(xPrime, yPrime, z).normalize());
 }
 
+// Check the passed-in ray against every scene object and return the nearest hit
 function calculateRayHit(ray) {
-  // Check ray against every scene object
   let maxZ = -Infinity;
   let hit = null;
 
@@ -310,8 +314,17 @@ function calculateRayHit(ray) {
 
 function getShadedColor(hit) {
   let color = new Color(0, 0, 0);
-  
-  // Diffuse
+
+  // Each of our shading functions add to the (r, g, b) values of the passed in color
+  diffuseShading(hit, color);
+  ambientShading(hit, color);
+  specularShading(hit, color);
+
+  return color;
+}
+
+//#region Shading Functions
+function diffuseShading(hit, color) {
   for (let i = 0; i < lights.length; i++) {
     let direction = createVector(lights[i].x - hit.x, lights[i].y - hit.y, lights[i].z - hit.z).normalize();
     let surfaceNormal = hit.surfaceNormal;
@@ -325,13 +338,13 @@ function getShadedColor(hit) {
     color.g += hit.sceneObject.material.dg * lights[i].g * dotProduct;
     color.b += hit.sceneObject.material.db * lights[i].b * dotProduct;
   }
-
-  //Ambient
+}
+function ambientShading(hit, color) {
   color.r += hit.sceneObject.material.ar * ambientLight.r;
   color.g += hit.sceneObject.material.ag * ambientLight.g;
   color.b += hit.sceneObject.material.ab * ambientLight.b;
-
-  // Specular
+}
+function specularShading(hit, color) {
   for (let i = 0; i < lights.length; i++) {
     let L = createVector(lights[i].x - hit.x, lights[i].y - hit.y, lights[i].z - hit.z).normalize();
     let V = createVector(-hit.x, -hit.y, -hit.z).normalize();
@@ -351,6 +364,5 @@ function getShadedColor(hit) {
       color.r += hit.sceneObject.material.sb * lights[i].b * specularFactor;
     }
   }
-
-  return color;
 }
+//#endregion
