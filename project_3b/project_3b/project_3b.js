@@ -66,37 +66,6 @@ class Cylinder extends SceneObject {
 
   }
 
-  getTValues(ray) {
-    let [a, b, c] = this.getQuadraticIntersectionTerms(ray);
-
-    let tValues = [];
-
-    // Quadratic Formula
-    // let t1 = ((-b) + Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
-    // let t2 = ((-b) - Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
-    // if (!isNaN(t1) && t1 >= 0) {
-    //   tValues.push(t1);
-    // }
-    // if (!isNaN(t2) && t2 >= 0) {
-    //   tValues.push(t2);
-    // }
-
-    // Cap intersections
-    let t3 = this.y / ray.direction.y; // Bottom
-    // Check if inside of cap
-    if (!isNaN(t3) && t3 >= 0 && Math.pow(t3 * ray.direction.x - this.x, 2) + Math.pow(t3 * ray.direction.z - this.z, 2) <= Math.pow(this.radius, 2)) {
-      tValues.push(t3);
-    }
-
-    let t4 = (this.y + this.height) / ray.direction.y; // Top
-    // Check if inside of cap
-    if (!isNaN(t4) && t4 >= 0 && Math.pow(t4 * ray.direction.x - this.x, 2) + Math.pow(t4 * ray.direction.z - this.z, 2) <= Math.pow(this.radius, 2)) {
-      tValues.push(t4);
-    }
-
-    return tValues;
-  }
-
   getSmallestTValue(ray) {
     let tValues = this.getTValues(ray);
 
@@ -169,16 +138,6 @@ class Sphere extends SceneObject {
     }
 
     return hits;
-  }
-
-  getTValues(ray) {
-    let [a, b, c] = this.getQuadraticIntersectionTerms(ray);
-
-    // Quadratic Formula
-    let t1 = ((-b) + Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
-    let t2 = ((-b) - Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
-
-    return [t1, t2];
   }
 
   getQuadraticIntersectionTerms(ray) {
@@ -256,7 +215,7 @@ class Hit {
 
 let sceneObjects = [];
 let lights = []; // Store all lights here even though they inherit from SceneObject! Yes this is confusing! :)
-let ambientLights = [];
+let ambientLight = new AmbientLight(0, 0, 0);
 let latestMaterial = null;
 let backgroundColor = null;
 let fov = 0;
@@ -264,7 +223,7 @@ let fov = 0;
 function reset_scene() {
   sceneObjects = [];
   lights = [];
-  ambientLights = [];
+  ambientLight = new AmbientLight(0, 0, 0);
   latestMaterial = null;
   backgroundColor = null;
   fov = 0;
@@ -283,7 +242,7 @@ function new_light (r, g, b, x, y, z) {
 }
 
 function ambient_light (r, g, b) {
-  ambientLights.push(new AmbientLight(r, g, b));
+  ambientLight = new AmbientLight(r, g, b);
 }
 
 function new_material (dr, dg, db, ar, ag, ab, sr, sg, sb, pow, k_refl) {
@@ -309,15 +268,12 @@ function draw_scene() {
       // Check ray against every cylinder
       let hit = calculateRayHit(ray);
 
+      let color = new Color(backgroundColor.r, backgroundColor.g, backgroundColor.b);
+
       // Set the pixel color to the shaded color of the ray
-      if (hit == null) {
-        color.r = backgroundColor.r;
-        color.g = backgroundColor.g;
-        color.b = backgroundColor.b;
-      } else {
+      if (hit != null) {
         color = getShadedColor(hit);
       }
-
       fill (color.r * 255, color.g * 255, color.b * 255);
 
       // Fill pixel with shaded color
@@ -354,6 +310,8 @@ function calculateRayHit(ray) {
 
 function getShadedColor(hit) {
   let color = new Color(0, 0, 0);
+  
+  // Diffuse
   for (let i = 0; i < lights.length; i++) {
     let direction = createVector(lights[i].x - hit.x, lights[i].y - hit.y, lights[i].z - hit.z).normalize();
     let surfaceNormal = hit.surfaceNormal;
@@ -367,10 +325,31 @@ function getShadedColor(hit) {
     color.g += hit.sceneObject.material.dg * lights[i].g * dotProduct;
     color.b += hit.sceneObject.material.db * lights[i].b * dotProduct;
   }
-  for (let i = 0; i < ambientLights.length; i++) {
-    color.r += hit.sceneObject.material.ar * ambientLights[i].r;
-    color.g += hit.sceneObject.material.ag * ambientLights[i].g;
-    color.b += hit.sceneObject.material.ab * ambientLights[i].b;
+
+  //Ambient
+  color.r += hit.sceneObject.material.ar * ambientLight.r;
+  color.g += hit.sceneObject.material.ag * ambientLight.g;
+  color.b += hit.sceneObject.material.ab * ambientLight.b;
+
+  // Specular
+  for (let i = 0; i < lights.length; i++) {
+    let L = createVector(lights[i].x - hit.x, lights[i].y - hit.y, lights[i].z - hit.z).normalize();
+    let V = createVector(-hit.x, -hit.y, -hit.z).normalize();
+
+    let H = p5.Vector.add(L, V);
+    H.div(2.0);
+
+    let NdotH = p5.Vector.dot(hit.surfaceNormal, H)
+    if (NdotH < 0) {
+      NdotH = 0;
+    }
+
+    let specularFactor = Math.pow(NdotH, hit.sceneObject.material.pow);
+    if (specularFactor > 0) {
+      color.r += hit.sceneObject.material.sr * lights[i].r * specularFactor;
+      color.g += hit.sceneObject.material.sg * lights[i].g * specularFactor;
+      color.r += hit.sceneObject.material.sb * lights[i].b * specularFactor;
+    }
   }
 
   return color;

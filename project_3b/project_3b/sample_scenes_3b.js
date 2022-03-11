@@ -34,7 +34,7 @@ function two_short_cylinders() {
   new_light (1, 1, 1, 2, 0, -2);
   
   // one cylinder
-  new_material (1, 0.0, 0.0,  0, 0, 0,  0, 0, 0,  1,  0);
+  new_material (1, 0.0, 0.0, 0, 0, 0,  0, 0, 0,  1,  0);
   new_cylinder (0, -1.5, -4,  1,  0.7);
   
   new_material (0.0, 1, 0.0,  0, 0, 0,  0, 0, 0,  1,  0);
@@ -169,7 +169,7 @@ function two_spheres() {
   new_light (1, 1, 1, -5, 2, 5);
   
   // two spheres
-  new_material (0.7, 0, 0,  0, 0, 0,  0.7, 0.7, 0.7,  20,  0.7);
+  new_material (0.7, 0, 0,  0, 0, 0,  0.7, 0.7, 0.7, 20,  0.7);
   new_sphere (0, 0, -4,  1);
   
   new_material (0.2, 0.8, 0.2,  0, 0, 0,  0, 0, 0,  1,  0);
