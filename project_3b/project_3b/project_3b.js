@@ -215,6 +215,21 @@ class Color {
     this.g = g;
     this.b = b;
   }
+
+  add(color2) {
+    if (color2 != undefined) {
+      this.r += color2.r;
+      this.g += color2.g;
+      this.b += color2.b;
+      return this;
+    }
+  }
+  mult(scale) {
+    this.r *= scale;
+    this.g *= scale;
+    this.b *= scale;
+    return this;
+  }
 }
 
 class Ray {
@@ -347,12 +362,32 @@ function lightIsBlocked(ray, ignoredSceneObject) {
   return false;
 }
 
-function getShadedColor(hit) {
+const MAX_REFLECTION_RECUSION_LEVEL = 5;
+const EPSILON = 0.0001;
+
+function getShadedColor(hit, reflectionRecursionLevel = 0) {
   let color = new Color(0, 0, 0);
 
   // Each of our shading functions add to the (r, g, b) values of the passed in color
   diffuseAndAmbientShading(hit, color);
   specularShading(hit, color);
+
+  // Recursive Reflections
+  if (hit.sceneObject.material.k_refl > 0 && reflectionRecursionLevel < MAX_REFLECTION_RECUSION_LEVEL) {
+    let E = createVector(-hit.x, -hit.y, -hit.z).normalize(); // Vector to camera
+    let N = hit.surfaceNormal; // Surface normal
+  
+    let R = reflect(E, N);
+
+    // Calculate shifted starting point
+    let startingPoint = createVector(hit.x, hit.y, hit.z);
+    startingPoint.mult(1 + EPSILON);
+
+    let reflectHit = calculateRayHit(new Ray(startingPoint.x, startingPoint.y, startingPoint.z, R));
+    if (reflectHit != null) {
+      color = color.add(getShadedColor(reflectHit, reflectionRecursionLevel + 1).mult(hit.sceneObject.material.k_refl));
+    }
+  }
 
   return color;
 }
@@ -392,7 +427,6 @@ function specularShading(hit, color) {
     let N = hit.surfaceNormal; // Surface normal
     let E = createVector(-hit.x, -hit.y, -hit.z).normalize(); // Vector to camera
 
-    // Mirror of L about N
     let R = reflect(L, N);
 
     let specularFactor = Math.pow(E.dot(R), hit.sceneObject.material.pow / (4.0));
@@ -418,9 +452,5 @@ function reflect(L, N) {
   R.normalize();
 
   return R;
-}
-
-function reflectionShading(hit, color) {
-
 }
 //#endregion
