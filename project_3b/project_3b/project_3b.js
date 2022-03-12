@@ -134,15 +134,24 @@ class Sphere extends SceneObject {
     let t2 = ((-b) - Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
 
     if (!isNaN(t1) && t1 >= 0) {
-      hits.push(new Hit(this, ray.direction.x * t1, ray.direction.y * t1, ray.direction.z * t1, 
-          createVector(ray.direction.x * t1 - this.x, ray.direction.y * t1 - this.y, ray.direction.z * t1 - this.z).normalize()));
+      let [x, y, z] = this.getHitPosition(ray, t1);
+      hits.push(new Hit(this, x, y, z, this.getSurfaceNormal(x, y, z)));
     }
     if (!isNaN(t2) && t2 >= 0) {
-      hits.push(new Hit(this, ray.direction.x * t2, ray.direction.y * t2, ray.direction.z * t2, 
-        createVector(ray.direction.x * t2 - this.x, ray.direction.y * t1 - this.y, ray.direction.z * t2 - this.z).normalize()));
+      let [x, y, z] = this.getHitPosition(ray, t2);
+      hits.push(new Hit(this, x, y, z, this.getSurfaceNormal(x, y, z)));
     }
 
     return hits;
+  }
+
+  getHitPosition(ray, t) {
+    return [ray.x0 + ray.direction.x * t, 
+            ray.y0 + ray.direction.y * t, 
+            ray.z0 + ray.direction.z * t];
+  }
+  getSurfaceNormal(x, y, z) {
+    return createVector(x - this.x, y - this.y, z - this.z).normalize();
   }
 
   getQuadraticIntersectionTerms(ray) {
@@ -152,11 +161,12 @@ class Sphere extends SceneObject {
     // Ray is unit vector, squared magnitude will always be 1
     let a = 1;
 
-    // -2 * -rayDirection * (rayOrigin - sphereCenter)
-    let b = -2 * p5.Vector.dot(p5.Vector.mult(ray.direction, -1), p5.Vector.sub(rayOrigin, center));
+    // -2 * (-rayDirection * (rayOrigin - sphereCenter))
+    let b = -2 * (p5.Vector.dot(p5.Vector.mult(ray.direction, -1), p5.Vector.sub(rayOrigin, center)));
 
     // (rayOrigin - center)^2 * rayDirection^2 - radius^2
     let c = Math.pow(p5.Vector.sub(rayOrigin, center).mag(), 2) * Math.pow(ray.direction.mag(), 2) - Math.pow(this.radius, 2);
+    
     return [a, b, c];
   }
 }
@@ -310,7 +320,6 @@ function createEyeRay(x, y) {
 }
 
 // Check the passed-in ray against every scene object and return the nearest hit
-// Pass in a sceneObject to ignore such as when doing cast shadows
 function calculateRayHit(ray) {
   let maxZ = -Infinity;
   let hit = null;
@@ -325,8 +334,8 @@ function calculateRayHit(ray) {
   return hit;
 }
 
-// Check the passed-in ray against every scene object and return true is an object is hit
-// Pass in a sceneObject to ignore such as when doing cast shadows
+// Check the passed-in ray against every scene object except the ignored one 
+// and return true if an object is hit
 function lightIsBlocked(ray, ignoredSceneObject) {
   for (let i = 0; i < sceneObjects.length; i++) {
     if (!(sceneObjects[i] === ignoredSceneObject)) {
@@ -377,29 +386,41 @@ function diffuseAndAmbientShading(hit, color) {
   color.b += hit.sceneObject.material.db * (hit.sceneObject.material.ab * ambientLight.b + diffuseB);
 }
 
-
 function specularShading(hit, color) {
   for (let i = 0; i < lights.length; i++) {
     let L = createVector(lights[i].x - hit.x, lights[i].y - hit.y, lights[i].z - hit.z).normalize(); // Vector to light source
-    let E = createVector(-hit.x, -hit.y, -hit.z).normalize(); // Vector to camera
     let N = hit.surfaceNormal; // Surface normal
+    let E = createVector(-hit.x, -hit.y, -hit.z).normalize(); // Vector to camera
 
-    // 2N * (NdotL) - L
-    let NdotL = p5.Vector.dot(N, L);
-    if (NdotL < 0) {
-      NdotL = 0
-    }
+    // Mirror of L about N
+    let R = reflect(L, N);
 
-    // R = 2N * (NdotL) - L
-    let R = createVector(N.x * 2 * NdotL, N.y * 2 * NdotL, N.z * 2 * NdotL);
-    R.sub(L);
-
-    let specularFactor = Math.pow(E.dot(R), hit.sceneObject.material.pow);
-    if (specularFactor >= 0) {
+    let specularFactor = Math.pow(E.dot(R), hit.sceneObject.material.pow / (4.0));
+    if (specularFactor > 0) {
       color.r += hit.sceneObject.material.sr * lights[i].r * specularFactor;
       color.g += hit.sceneObject.material.sg * lights[i].g * specularFactor;
       color.b += hit.sceneObject.material.sb * lights[i].b * specularFactor;
     }
   }
+}
+
+// Returns R, the reflection of L about N
+function reflect(L, N) {
+  N.normalize();
+
+  let NdotL = p5.Vector.dot(N, L);
+    if (NdotL < 0) {
+     NdotL = 0
+  }
+
+  // Mirror of L about N
+  let R = createVector(N.x * 2 * NdotL, N.y * 2 * NdotL, N.z * 2 * NdotL).sub(L);
+  R.normalize();
+
+  return R;
+}
+
+function reflectionShading(hit, color) {
+
 }
 //#endregion
