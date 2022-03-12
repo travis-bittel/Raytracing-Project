@@ -23,26 +23,30 @@ class Cylinder extends SceneObject {
 
     let t1 = ((-b) + Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
     let t2 = ((-b) - Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
-    if (!isNaN(t1) && t1 >= 0 && ray.direction.y * t1 > this.y && ray.direction.y * t1 < this.y + this.height) {
-      hits.push(new Hit(this, ray.direction.x * t1, ray.direction.y * t1, ray.direction.z * t1, 
+    if (!isNaN(t1) && t1 >= 0 && ray.y0 + ray.direction.y * t1 > this.y && ray.y0 + ray.direction.y * t1 < this.y + this.height) {
+      hits.push(new Hit(this, ray.x0 + ray.direction.x * t1, ray.y0 + ray.direction.y * t1, ray.z0 + ray.direction.z * t1, 
           createVector(ray.direction.x * t1 - this.x, 0, ray.direction.z * t1 - this.z).normalize()));
     }
-    if (!isNaN(t2) && t2 >= 0 && ray.direction.y * t2 > this.y && ray.direction.y * t2 < this.y + this.height) {
-      hits.push(new Hit(this, ray.direction.x * t2, ray.direction.y * t2, ray.direction.z * t2, 
+    if (!isNaN(t2) && t2 >= 0 && ray.y0 + ray.direction.y * t2 > this.y && ray.y0 + ray.direction.y * t2 < this.y + this.height) {
+      hits.push(new Hit(this, ray.x0 + ray.direction.x * t2, ray.y0 + ray.direction.y * t2, ray.z0 + ray.direction.z * t2, 
         createVector(ray.direction.x * t2 - this.x, 0, ray.direction.z * t2 - this.z).normalize()));
     }
 
     // Cap intersections
-    let t3 = this.y / ray.direction.y; // Bottom
+    //let t3 = this.y / ray.direction.y; // Bottom
+    let t3 = (this.y - ray.y0) / (ray.direction.y);
+
     // Check if inside of cap
-    if (!isNaN(t3) && t3 >= 0 && Math.pow(t3 * ray.direction.x - this.x, 2) + Math.pow(t3 * ray.direction.z - this.z, 2) <= Math.pow(this.radius, 2)) {
-      hits.push(new Hit(this, ray.direction.x * t3, ray.direction.y * t3, ray.direction.z * t3, createVector(0, -1, 0)));
+    if (!isNaN(t3) && t3 >= 0 && Math.pow(ray.x0 + t3 * ray.direction.x - this.x, 2) + Math.pow(ray.z0 + t3 * ray.direction.z - this.z, 2) <= Math.pow(this.radius, 2)) {
+      hits.push(new Hit(this, ray.x0 + ray.direction.x * t3, ray.y0 + ray.direction.y * t3, ray.z0 + ray.direction.z * t3, createVector(0, -1, 0)));
     }
 
-    let t4 = (this.y + this.height) / ray.direction.y; // Top
+    //let t4 = (this.y + this.height) / ray.direction.y; // Top
+    let t4 = (this.y + this.height - ray.y0) / (ray.direction.y);
+
     // Check if inside of cap
-    if (!isNaN(t4) && t4 >= 0 && Math.pow(t4 * ray.direction.x - this.x, 2) + Math.pow(t4 * ray.direction.z - this.z, 2) <= Math.pow(this.radius, 2)) {
-      hits.push(new Hit(this, ray.direction.x * t4, ray.direction.y * t4, ray.direction.z * t4, createVector(0, 1, 0)));
+    if (!isNaN(t4) && t4 >= 0 && Math.pow(ray.x0 + t4 * ray.direction.x - this.x, 2) + Math.pow(ray.z0 + t4 * ray.direction.z - this.z, 2) <= Math.pow(this.radius, 2)) {
+      hits.push(new Hit(this, ray.x0 + ray.direction.x * t4, ray.y0 + ray.direction.y * t4, ray.z0 + ray.direction.z * t4, createVector(0, 1, 0)));
     }
 
     return hits;
@@ -324,7 +328,6 @@ function calculateRayHit(ray) {
 // Check the passed-in ray against every scene object and return true is an object is hit
 // Pass in a sceneObject to ignore such as when doing cast shadows
 function lightIsBlocked(ray, ignoredSceneObject) {
-
   for (let i = 0; i < sceneObjects.length; i++) {
     if (!(sceneObjects[i] === ignoredSceneObject)) {
       if (sceneObjects[i].getNearestHit(ray) != null) {
