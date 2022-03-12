@@ -88,8 +88,8 @@ class Cylinder extends SceneObject {
   
   getQuadraticIntersectionTerms(ray) {
     let a = Math.pow(ray.direction.x, 2) + Math.pow(ray.direction.z, 2); 
-    let b = -2 * ray.direction.x * this.x - (2 * ray.direction.z * this.z);
-    let c = Math.pow(this.x, 2) + Math.pow(this.z, 2) - Math.pow(this.radius, 2);
+    let b = 2 * ((ray.x0 * ray.direction.x - ray.direction.x * this.x) + (ray.z0 * ray.direction.z - ray.direction.z * this.z));
+    let c = Math.pow(ray.x0 - this.x, 2) + Math.pow(ray.z0 - this.z, 2) - Math.pow(this.radius, 2);
     return [a, b, c];
   }
 }
@@ -142,9 +142,17 @@ class Sphere extends SceneObject {
   }
 
   getQuadraticIntersectionTerms(ray) {
-    let a = 1; // Ray is unit vector, squared magnitude will always be 1
-    let b = -2 * (ray.direction.x * this.x + ray.direction.y * this.y + ray.direction.z * this.z);
-    let c = Math.pow(this.x, 2) + Math.pow(this.y, 2) + Math.pow(this.z, 2) - Math.pow(this.radius, 2);
+    let rayOrigin = createVector(ray.x, ray.y, ray.z);
+    let center = createVector(this.x, this.y, this.z);
+
+    // Ray is unit vector, squared magnitude will always be 1
+    let a = 1;
+
+    // -2 * -rayDirection * (rayOrigin - sphereCenter)
+    let b = -2 * p5.Vector.dot(p5.Vector.mult(ray.direction, -1), p5.Vector.sub(rayOrigin, center));
+
+    // (rayOrigin - center)^2 * rayDirection^2 - radius^2
+    let c = Math.pow(p5.Vector.sub(rayOrigin, center).mag(), 2) * Math.pow(ray.direction.mag(), 2) - Math.pow(this.radius, 2);
     return [a, b, c];
   }
 }
