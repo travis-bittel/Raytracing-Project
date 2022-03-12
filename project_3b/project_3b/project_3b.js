@@ -329,17 +329,19 @@ function diffuseAndAmbientShading(hit, color) {
   let diffuseB = 0;
 
   for (let i = 0; i < lights.length; i++) {
-    let direction = createVector(lights[i].x - hit.x, lights[i].y - hit.y, lights[i].z - hit.z).normalize();
+    let directionToLight = createVector(lights[i].x - hit.x, lights[i].y - hit.y, lights[i].z - hit.z).normalize();
     let surfaceNormal = hit.surfaceNormal;
 
-    let dotProduct = surfaceNormal.dot(direction);
+    let dotProduct = surfaceNormal.dot(directionToLight);
     if (dotProduct < 0) {
       dotProduct = 0;
     }
 
-    diffuseR += lights[i].r * dotProduct;
-    diffuseG += lights[i].g * dotProduct;
-    diffuseB += lights[i].b * dotProduct;
+    if (calculateRayHit(new Ray(hit.x, hit.y, hit.z, directionToLight)) == null) {
+      diffuseR += lights[i].r * dotProduct;
+      diffuseG += lights[i].g * dotProduct;
+      diffuseB += lights[i].b * dotProduct;
+    }
   }
   
   // Diffuse Color * (Ambient Amount + Diffuse Amount)
@@ -347,24 +349,29 @@ function diffuseAndAmbientShading(hit, color) {
   color.g += hit.sceneObject.material.dg * (hit.sceneObject.material.ag * ambientLight.g + diffuseG);
   color.b += hit.sceneObject.material.db * (hit.sceneObject.material.ab * ambientLight.b + diffuseB);
 }
+
+
 function specularShading(hit, color) {
   for (let i = 0; i < lights.length; i++) {
-    let L = createVector(lights[i].x - hit.x, lights[i].y - hit.y, lights[i].z - hit.z).normalize();
-    let V = createVector(-hit.x, -hit.y, -hit.z).normalize();
+    let L = createVector(lights[i].x - hit.x, lights[i].y - hit.y, lights[i].z - hit.z).normalize(); // Vector to light source
+    let E = createVector(-hit.x, -hit.y, -hit.z).normalize(); // Vector to camera
+    let N = hit.surfaceNormal; // Surface normal
 
-    let H = p5.Vector.add(L, V);
-    H.div(2.0);
-
-    let NdotH = p5.Vector.dot(hit.surfaceNormal, H);
-    if (NdotH < 0) {
-      NdotH = 0;
+    // 2N * (NdotL) - L
+    let NdotL = p5.Vector.dot(N, L);
+    if (NdotL < 0) {
+      NdotL = 0
     }
 
-    let specularFactor = Math.pow(NdotH, hit.sceneObject.material.pow);
-    if (specularFactor > 0) {
+    // R = 2N * (NdotL) - L
+    let R = createVector(N.x * 2 * NdotL, N.y * 2 * NdotL, N.z * 2 * NdotL);
+    R.sub(L);
+
+    let specularFactor = Math.pow(E.dot(R), hit.sceneObject.material.pow);
+    if (specularFactor >= 0) {
       color.r += hit.sceneObject.material.sr * lights[i].r * specularFactor;
       color.g += hit.sceneObject.material.sg * lights[i].g * specularFactor;
-      color.r += hit.sceneObject.material.sb * lights[i].b * specularFactor;
+      color.b += hit.sceneObject.material.sb * lights[i].b * specularFactor;
     }
   }
 }
