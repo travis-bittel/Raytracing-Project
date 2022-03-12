@@ -142,7 +142,7 @@ class Sphere extends SceneObject {
   }
 
   getQuadraticIntersectionTerms(ray) {
-    let rayOrigin = createVector(ray.x, ray.y, ray.z);
+    let rayOrigin = createVector(ray.x0, ray.y0, ray.z0);
     let center = createVector(this.x, this.y, this.z);
 
     // Ray is unit vector, squared magnitude will always be 1
@@ -306,18 +306,33 @@ function createEyeRay(x, y) {
 }
 
 // Check the passed-in ray against every scene object and return the nearest hit
+// Pass in a sceneObject to ignore such as when doing cast shadows
 function calculateRayHit(ray) {
   let maxZ = -Infinity;
   let hit = null;
 
   for (let i = 0; i < sceneObjects.length; i++) {
-    let tempHit = sceneObjects[i].getNearestHit(ray);
-    if (tempHit != null && tempHit.z > maxZ) {
-      hit = tempHit;
-      maxZ = tempHit.z;
-    }
+      let tempHit = sceneObjects[i].getNearestHit(ray);
+      if (tempHit != null && tempHit.z > maxZ) {
+        hit = tempHit;
+        maxZ = tempHit.z;
+      }
   }
   return hit;
+}
+
+// Check the passed-in ray against every scene object and return true is an object is hit
+// Pass in a sceneObject to ignore such as when doing cast shadows
+function lightIsBlocked(ray, ignoredSceneObject) {
+
+  for (let i = 0; i < sceneObjects.length; i++) {
+    if (!(sceneObjects[i] === ignoredSceneObject)) {
+      if (sceneObjects[i].getNearestHit(ray) != null) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 function getShadedColor(hit) {
@@ -345,7 +360,8 @@ function diffuseAndAmbientShading(hit, color) {
       dotProduct = 0;
     }
 
-    if (calculateRayHit(new Ray(hit.x, hit.y, hit.z, directionToLight)) == null) {
+    // Cast shadows
+    if (!lightIsBlocked(new Ray(hit.x, hit.y, hit.z, directionToLight), hit.sceneObject)) {
       diffuseR += lights[i].r * dotProduct;
       diffuseG += lights[i].g * dotProduct;
       diffuseB += lights[i].b * dotProduct;
