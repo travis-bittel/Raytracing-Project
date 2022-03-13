@@ -60,19 +60,17 @@ class Cylinder extends SceneObject {
     let hits = this.getHits(ray);
 
     let bestHit = null;
-    let maxZ = -Infinity;
+    let minT = Infinity;
 
     hits.forEach(
       hit => {
-        if (hit != undefined && hit != null && hit.z > maxZ) {
+        if (hit != undefined && hit != null && hit.t < minT) {
           bestHit = hit;
-          maxZ = hit.z;
+          minT = hit.t;
         }
       }
     );
-
     return bestHit;
-
   }
 
   getSmallestTValue(ray) {
