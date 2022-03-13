@@ -24,32 +24,36 @@ class Cylinder extends SceneObject {
     let t1 = ((-b) + Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
     let t2 = ((-b) - Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
     if (!isNaN(t1) && t1 >= 0 && ray.y0 + ray.direction.y * t1 > this.y && ray.y0 + ray.direction.y * t1 < this.y + this.height) {
-      hits.push(new Hit(this, ray.x0 + ray.direction.x * t1, ray.y0 + ray.direction.y * t1, ray.z0 + ray.direction.z * t1, 
-          createVector(ray.direction.x * t1 - this.x, 0, ray.direction.z * t1 - this.z).normalize()));
+      let [x, y, z] = this.getHitPosition(ray, t1);
+      hits.push(new Hit(this, x, y, z, createVector(x - this.x, 0, z - this.z).normalize(), t1));
     }
     if (!isNaN(t2) && t2 >= 0 && ray.y0 + ray.direction.y * t2 > this.y && ray.y0 + ray.direction.y * t2 < this.y + this.height) {
-      hits.push(new Hit(this, ray.x0 + ray.direction.x * t2, ray.y0 + ray.direction.y * t2, ray.z0 + ray.direction.z * t2, 
-        createVector(ray.direction.x * t2 - this.x, 0, ray.direction.z * t2 - this.z).normalize()));
+      let [x, y, z] = this.getHitPosition(ray, t2);
+      hits.push(new Hit(this, x, y, z, createVector(x - this.x, 0, z - this.z).normalize(), t2));
     }
 
     // Cap intersections
-    //let t3 = this.y / ray.direction.y; // Bottom
-    let t3 = (this.y - ray.y0) / (ray.direction.y);
-
+    let t3 = (this.y - ray.y0) / (ray.direction.y); // Bottom
     // Check if inside of cap
-    if (!isNaN(t3) && t3 >= 0 && Math.pow(ray.x0 + t3 * ray.direction.x - this.x, 2) + Math.pow(ray.z0 + t3 * ray.direction.z - this.z, 2) <= Math.pow(this.radius, 2)) {
-      hits.push(new Hit(this, ray.x0 + ray.direction.x * t3, ray.y0 + ray.direction.y * t3, ray.z0 + ray.direction.z * t3, createVector(0, -1, 0)));
+    if (!isNaN(t3) && t3 >= 0 && Math.pow(ray.x0 + ray.direction.x * t3 - this.x, 2) + Math.pow(ray.z0 + ray.direction.z * t3 - this.z, 2) <= Math.pow(this.radius, 2)) {
+      let [x, y, z] = this.getHitPosition(ray, t3);
+      hits.push(new Hit(this, x, y, z, createVector(0, -1, 0), t3));
     }
 
-    //let t4 = (this.y + this.height) / ray.direction.y; // Top
-    let t4 = (this.y + this.height - ray.y0) / (ray.direction.y);
-
+    let t4 = (this.y + this.height - ray.y0) / (ray.direction.y); // Top
     // Check if inside of cap
-    if (!isNaN(t4) && t4 >= 0 && Math.pow(ray.x0 + t4 * ray.direction.x - this.x, 2) + Math.pow(ray.z0 + t4 * ray.direction.z - this.z, 2) <= Math.pow(this.radius, 2)) {
-      hits.push(new Hit(this, ray.x0 + ray.direction.x * t4, ray.y0 + ray.direction.y * t4, ray.z0 + ray.direction.z * t4, createVector(0, 1, 0)));
+    if (!isNaN(t4) && t4 >= 0 && Math.pow(ray.x0 + ray.direction.x * t4 - this.x, 2) + Math.pow(ray.z0 + ray.direction.z * t4 - this.z, 2) <= Math.pow(this.radius, 2)) {
+      let [x, y, z] = this.getHitPosition(ray, t4);
+      hits.push(new Hit(this, x, y, z, createVector(0, 1, 0), t4));
     }
 
     return hits;
+  }
+
+  getHitPosition(ray, t) {
+    return [ray.x0 + ray.direction.x * t, 
+            ray.y0 + ray.direction.y * t, 
+            ray.z0 + ray.direction.z * t];
   }
 
   getNearestHit(ray) {
@@ -109,19 +113,18 @@ class Sphere extends SceneObject {
     let hits = this.getHits(ray);
 
     let bestHit = null;
-    let maxZ = -Infinity;
+    let minT = Infinity;
 
     hits.forEach(
       hit => {
-        if (hit != undefined && hit != null && hit.z > maxZ) {
+        if (hit != undefined && hit != null && hit.t >= 0 && hit.t < minT) {
           bestHit = hit;
-          maxZ = hit.z;
+          minT = hit.t;
         }
       }
     );
 
     return bestHit;
-
   }
 
   getHits(ray) {
@@ -135,11 +138,11 @@ class Sphere extends SceneObject {
 
     if (!isNaN(t1) && t1 >= 0) {
       let [x, y, z] = this.getHitPosition(ray, t1);
-      hits.push(new Hit(this, x, y, z, this.getSurfaceNormal(x, y, z)));
+      hits.push(new Hit(this, x, y, z, this.getSurfaceNormal(x, y, z), t1));
     }
     if (!isNaN(t2) && t2 >= 0) {
       let [x, y, z] = this.getHitPosition(ray, t2);
-      hits.push(new Hit(this, x, y, z, this.getSurfaceNormal(x, y, z)));
+      hits.push(new Hit(this, x, y, z, this.getSurfaceNormal(x, y, z), t2));
     }
 
     return hits;
@@ -242,11 +245,12 @@ class Ray {
 }
 
 class Hit {
-  constructor(sceneObject, x, y, z, surfaceNormal) {
+  constructor(sceneObject, x, y, z, surfaceNormal, t) {
     this.sceneObject = sceneObject;
     this.x = x;
     this.y = y;
     this.z = z;
+    this.t = t;
     this.surfaceNormal = surfaceNormal;
   }
 }
@@ -336,19 +340,20 @@ function createEyeRay(x, y) {
 
 // Check the passed-in ray against every scene object and return the nearest hit
 function calculateRayHit(ray) {
-  let maxZ = -Infinity;
+  let minT = Infinity;
   let hit = null;
 
   for (let i = 0; i < sceneObjects.length; i++) {
       let tempHit = sceneObjects[i].getNearestHit(ray);
-      if (tempHit != null && tempHit.z > maxZ) {
+      if (tempHit != null && tempHit.t < minT) {
         hit = tempHit;
-        maxZ = tempHit.z;
+        minT = tempHit.t;
       }
   }
   return hit;
 }
 
+//#region Shading Functions
 // Check the passed-in ray against every scene object except the ignored one 
 // and return true if an object is hit
 function lightIsBlocked(ray, ignoredSceneObject) {
@@ -362,15 +367,27 @@ function lightIsBlocked(ray, ignoredSceneObject) {
   return false;
 }
 
-const MAX_REFLECTION_RECUSION_LEVEL = 5;
+const MAX_REFLECTION_RECUSION_LEVEL = 10;
 const EPSILON = 0.0001;
 
-function getShadedColor(hit, reflectionRecursionLevel = 0) {
+function getShadedColor(hit) {
   let color = new Color(0, 0, 0);
 
-  // Each of our shading functions add to the (r, g, b) values of the passed in color
-  diffuseAndAmbientShading(hit, color);
-  specularShading(hit, color);
+  // Recursive Reflections
+  if (hit.sceneObject.material.k_refl > 0) {
+    color.add(recursiveShading(hit, 0));
+  } else {
+    color.add(diffuseAndAmbientShading(hit));
+    color.add(specularShading(hit));
+  }
+  return color;
+}
+
+function recursiveShading(hit, reflectionRecursionLevel = 0) {
+  let color = new Color(0, 0, 0);
+
+  color.add(diffuseAndAmbientShading(hit));
+  color.add(specularShading(hit));
 
   // Recursive Reflections
   if (hit.sceneObject.material.k_refl > 0 && reflectionRecursionLevel < MAX_REFLECTION_RECUSION_LEVEL) {
@@ -381,23 +398,23 @@ function getShadedColor(hit, reflectionRecursionLevel = 0) {
 
     // Calculate shifted starting point
     let startingPoint = createVector(hit.x, hit.y, hit.z);
-    startingPoint.mult(1 + EPSILON);
+    startingPoint.add(p5.Vector.mult(R, EPSILON));
 
     let reflectHit = calculateRayHit(new Ray(startingPoint.x, startingPoint.y, startingPoint.z, R));
     if (reflectHit != null) {
-      color = color.add(getShadedColor(reflectHit, reflectionRecursionLevel + 1).mult(hit.sceneObject.material.k_refl));
+      color.add(recursiveShading(reflectHit, reflectionRecursionLevel + 1).mult(hit.sceneObject.material.k_refl));
+    } else {
+      color.add(new Color(backgroundColor.r, backgroundColor.g, backgroundColor.b));
     }
   }
 
   return color;
 }
 
-//#region Shading Functions
-function diffuseAndAmbientShading(hit, color) {
-  let diffuseR = 0;
-  let diffuseG = 0;
-  let diffuseB = 0;
+function diffuseAndAmbientShading(hit) {
+  let color = new Color(0, 0, 0);
 
+  let diffuseR = 0, diffuseG = 0, diffuseB = 0;
   for (let i = 0; i < lights.length; i++) {
     let directionToLight = createVector(lights[i].x - hit.x, lights[i].y - hit.y, lights[i].z - hit.z).normalize();
     let surfaceNormal = hit.surfaceNormal;
@@ -416,12 +433,16 @@ function diffuseAndAmbientShading(hit, color) {
   }
   
   // Diffuse Color * (Ambient Amount + Diffuse Amount)
-  color.r += hit.sceneObject.material.dr * (hit.sceneObject.material.ar * ambientLight.r + diffuseR);
-  color.g += hit.sceneObject.material.dg * (hit.sceneObject.material.ag * ambientLight.g + diffuseG);
-  color.b += hit.sceneObject.material.db * (hit.sceneObject.material.ab * ambientLight.b + diffuseB);
+  color.r = hit.sceneObject.material.dr * (hit.sceneObject.material.ar * ambientLight.r + diffuseR);
+  color.g = hit.sceneObject.material.dg * (hit.sceneObject.material.ag * ambientLight.g + diffuseG);
+  color.b = hit.sceneObject.material.db * (hit.sceneObject.material.ab * ambientLight.b + diffuseB);
+
+  return color;
 }
 
-function specularShading(hit, color) {
+function specularShading(hit) {
+  let color = new Color(0, 0, 0);
+
   for (let i = 0; i < lights.length; i++) {
     let L = createVector(lights[i].x - hit.x, lights[i].y - hit.y, lights[i].z - hit.z).normalize(); // Vector to light source
     let N = hit.surfaceNormal; // Surface normal
@@ -436,6 +457,8 @@ function specularShading(hit, color) {
       color.b += hit.sceneObject.material.sb * lights[i].b * specularFactor;
     }
   }
+
+  return color;
 }
 
 // Returns R, the reflection of L about N
